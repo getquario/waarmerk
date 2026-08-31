@@ -1,6 +1,6 @@
 {
   "name": "waarmerk",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Tiny and spoof-proof located diagnostics for JavaScript parsers.",
   "keywords": [
     "diagnostic",
