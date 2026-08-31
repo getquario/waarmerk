@@ -260,6 +260,7 @@ Minting and relocation both cost roughly what constructing an `Error` costs; `is
 git clone https://github.com/getquario/waarmerk.git
 cd waarmerk
 npm install
+git config core.hooksPath .githooks   # enable the commit-msg hook
 npm run check
 ```
 
