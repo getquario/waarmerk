@@ -2,7 +2,7 @@
 
 The located diagnostic for the quario parser family. Plain JS + JSDoc, zero runtime dependencies. `lib/index.js` is the implementation and the package.
 
-Work is done when `npm run check` is green. Scripts live in `package.json`. Run them on Node: Bun accepts `--disallow-code-generation-from-strings` but does not enforce it. A single suite is `node --disallow-code-generation-from-strings --test test/relocate.test.js`. The contract is normative in `README.md`; this file is how to work on it.
+Work is done when `npm run check` is green. Scripts live in `package.json`. Run them on Node: Bun accepts `--disallow-code-generation-from-strings` but does not enforce it. A single suite is `node --disallow-code-generation-from-strings --test test/relocate.test.js`. The contract is normative in `README.md`, and `## Used by` there names the four packages that mint through this one; this file is how to work on it.
 
 ## Architecture
 

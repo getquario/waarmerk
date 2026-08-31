@@ -19,13 +19,36 @@ waarmerk is the handover. The parser mints an error only it can vouch for, and r
 
 _Waarmerk_ is Dutch for a hallmark — the mark that says whose something is, and that it is genuine.
 
+**This is a package for people writing parsers.** If you are using one, you want its own documentation; waarmerk is what it may be built on.
+
+## Contents
+
+- [Install](#install)
+- [Usage](#usage)
+- [Why not just throw an error with a code on it?](#why-not-just-throw-an-error-with-a-code-on-it)
+- [Used by](#used-by)
+- [API](#api)
+- [Integrating](#integrating)
+  - [Exposing it from your own package](#exposing-it-from-your-own-package)
+  - [TypeScript](#typescript)
+  - [Budgets](#budgets)
+  - [When the text crossed a decode](#when-the-text-crossed-a-decode)
+  - [Adding your own context](#adding-your-own-context)
+- [Contract](#contract)
+- [What waarmerk is not](#what-waarmerk-is-not)
+- [Content Security Policy](#content-security-policy)
+- [Safety](#safety)
+- [Environments](#environments)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Install
 
 ```bash
 npm install waarmerk
 ```
 
-Node.js 22 or newer, ESM only.
+Node.js 22 or newer, ESM only. TypeScript declarations ship with the package; nothing extra to install.
 
 ## Usage
 
@@ -75,13 +98,44 @@ recalc([{ ref: "C3", formula: "=4 * 5" }]);
 
 The copy is a real `SyntaxError`, carries every field the parser put on it, and still passes `csv-math`'s own `isDiagnostic`. The spreadsheet wrote none of that.
 
-### Why not just throw an error with a code on it?
+## Why not just throw an error with a code on it?
 
 You can, and for a parser nobody embeds you should. Three things go wrong once something does embed it:
 
 - **Shape is not identity.** `error.code && error.start != null` is true of any error that happens to look right, including one thrown from a callback you were handed. waarmerk authenticates against a `WeakMap` only the parser holds, so a look-alike fails.
 - **A hand-rolled copy drops fields.** The embedder copies `message`, `code`, `start`, `end` — then the parser adds a `hint` in a minor release and nobody downstream hears about it. waarmerk copies by descriptor, so a field added later travels for free.
 - **A hand-rolled copy is a stranger.** It fails the parser's own guard, so any code that catches it further out no longer recognises it. waarmerk's copy joins the same store.
+
+If none of those bite — your parser is a leaf, its errors are read by humans and not by code — a plain `Error` with a `code` is less machinery for the same result.
+
+## Used by
+
+Four published parsers mint through waarmerk, and they are worth reading as worked integrations:
+
+- **[xprsn](https://github.com/getquario/xprsn)** — an expression language. The worked case for [`origin`](#api): it compiles once and evaluates many times, and scopes a per-evaluator `isDiagnostic` to the compile token it minted with.
+- **[sjabloon](https://github.com/getquario/sjabloon)** — a template engine. Mints with a frozen `blocks` array of enclosing-block spans, and uses [`adopt`](#adding-your-own-context) on an xprsn fault it relocated into template coordinates, so the result answers to both packages.
+- **[treffer](https://github.com/getquario/treffer)** — an RFC 9485 I-Regexp matcher. Shows the split between located syntax faults and the spanless budget diagnostics `capped` mints.
+- **[padvinder](https://github.com/getquario/padvinder)** — an RFC 9535 JSONPath engine. Adopts a treffer pattern fault into query coordinates, and re-exports treffer's code union so its own consumers can name those codes without a treffer dependency.
+
+## API
+
+|                                                      |                                                                                  |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `store(name?)`                                       | A frozen `{ isDiagnostic, origin, name }`. One per package, made at module load. |
+| `mint(store, Kind, message, fields?, origin?)`       | **Throws** a diagnostic of class `Kind`, authenticated against `store`.          |
+| `adopt(store, error, fields?, origin?)`              | **Returns** `error`, now a member of `store`, with `fields` defined on it.       |
+| `capped(store, name, code, limit, actual?, origin?)` | **Throws** a `RangeError` reading `<name> limit of <limit> exceeded`.            |
+| `relocate(store, diag, { prefix?, offset?, span? })` | Returns the copy. Throws `TypeError` when `diag` is not from `store`.            |
+
+`mint` and `capped` throw rather than return, so a call site reads as the end of a branch and TypeScript narrows after it. `adopt` and `relocate` hand the error back for you to throw, because both are used mid-expression.
+
+`fields` are defined non-writable, non-configurable and enumerable — so they show up in a spread, resist tampering, and a frozen value you attach stays frozen through any number of relocations.
+
+`origin` is optional and most packages ignore it. It exists for parsers that compile once and evaluate many times: pass a per-compile token and `store.origin(error)` hands it back, so one compilation's runtime errors can be told from another's.
+
+waarmerk defines no error codes and no field names beyond the five it documents — `code`, `start`, `end`, `limit`, `actual`. Which codes exist, and what rides with each, is yours.
+
+## Integrating
 
 ### Exposing it from your own package
 
@@ -98,15 +152,24 @@ That is the whole integration. One store per package, made once at module load.
 
 Name your store, and `relocate` refuses a foreign error as `TypeError("Not a diagnostic from csv-math")` rather than naming a dependency your caller never chose. `store()` without a name says `waarmerk`.
 
-### When the text crossed a decode
+### TypeScript
 
-`offset` shifts a span, and it is right whenever the parser read a verbatim slice of your text. It is wrong when your text was _decoded_ first — a pattern pulled out of a JSON string literal, where `\\d` is three characters standing for two and every later column slides. There is no offset that fixes that, so name the region instead:
+Types ship with the package. Declare your code union once, on the store, and every code your package throws is checked against it from then on:
 
-```js
-throw relocate(error, { prefix: "$.a[?match(@.b, ...)]: ", span: [16, 24] });
+```ts
+import { type Diagnostic, mint, store } from "waarmerk";
+
+export type CsvMathErrorCode = "CSVMATH_SYNTAX" | "CSVMATH_MAX_NODES";
+export interface CsvMathDiagnostic extends Diagnostic<CsvMathErrorCode> {}
+
+const diags = store<CsvMathErrorCode>("csv-math");
+export const isDiagnostic = diags.isDiagnostic; // already narrowed — no cast
+
+mint(diags, SyntaxError, "…", { code: "CSVMATH_TYPO", start: 0, end: 1 });
+//                               ~~~~ Type '"CSVMATH_TYPO"' is not assignable
 ```
 
-`span` replaces the span outright, and wins if you pass both. Neither option ever _adds_ a span to a diagnostic that had none.
+The point of naming the union on the store is that an undeclared code fails at the line that throws it, rather than shipping and surprising a consumer switching on `code`. Add whatever else your diagnostics carry to the interface; `Diagnostic` names only the five fields waarmerk knows about.
 
 ### Budgets
 
@@ -119,6 +182,16 @@ capped(diags, "maxNodes", "CSVMATH_MAX_NODES", 100, 101);
 ```
 
 These carry no span, and relocation leaves them that way.
+
+### When the text crossed a decode
+
+`offset` shifts a span, and it is right whenever the parser read a verbatim slice of your text. It is wrong when your text was _decoded_ first — a pattern pulled out of a JSON string literal, where `\\d` is three characters standing for two and every later column slides. There is no offset that fixes that, so name the region instead:
+
+```js
+throw relocate(error, { prefix: "$.a[?match(@.b, ...)]: ", span: [16, 24] });
+```
+
+`span` replaces the span outright, and wins if you pass both. Neither option ever _adds_ a span to a diagnostic that had none.
 
 ### Adding your own context
 
@@ -136,37 +209,6 @@ try {
   throw adopt(diags, relocateExpression(error, { offset: at }), { blocks: open() });
 }
 ```
-
-### TypeScript
-
-Types ship with the package. `Diagnostic` names the fields waarmerk knows about; narrow it to your own:
-
-```ts
-import { type Diagnostic, store } from "waarmerk";
-
-export interface CsvMathDiagnostic extends Diagnostic {
-  readonly code?: "CSVMATH_SYNTAX" | "CSVMATH_MAX_NODES";
-}
-
-const diags = store();
-export const isDiagnostic = diags.isDiagnostic as (error: unknown) => error is CsvMathDiagnostic;
-```
-
-## API
-
-|                                                      |                                                                            |
-| ---------------------------------------------------- | -------------------------------------------------------------------------- |
-| `store()`                                            | A frozen `{ isDiagnostic, origin }`. One per package, made at module load. |
-| `mint(store, Kind, message, fields?, origin?)`       | **Throws** a diagnostic of class `Kind`, authenticated against `store`.    |
-| `adopt(store, error, fields?, origin?)`              | **Returns** `error`, now a member of `store`, with `fields` defined on it. |
-| `capped(store, name, code, limit, actual?, origin?)` | **Throws** a `RangeError` reading `<name> limit of <limit> exceeded`.      |
-| `relocate(store, diag, { prefix?, offset?, span? })` | Returns the copy. Throws `TypeError` when `diag` is not from `store`.      |
-
-`fields` are defined non-writable, non-configurable and enumerable — so they show up in a spread, resist tampering, and a frozen value you attach stays frozen through any number of relocations.
-
-`origin` is optional and most packages ignore it. It exists for parsers that compile once and evaluate many times: pass a per-compile token and `store.origin(error)` hands it back, so one compilation's runtime errors can be told from another's.
-
-waarmerk defines no error codes and no field names beyond the five it documents. Which codes exist, and what rides with each, is yours.
 
 ## Contract
 
@@ -202,6 +244,8 @@ Relocation builds its copy from a class table captured at module load, never thr
 
 The WeakMap behind a store never leaves this module: handing out a way to add a member would make authentication forgeable. Fields are defined non-writable and non-configurable, so a frozen value attached at mint stays frozen through any number of relocations.
 
+Authentication says who minted an error. It says nothing about whether the metadata is safe to render: a `message` built from untrusted input is untrusted text, and escaping it belongs at your output edge. [SECURITY.md](SECURITY.md) has the rest, and the process for reporting a vulnerability.
+
 ## Environments
 
 Node.js 22 and newer, ESM only. Browser use is supported through a standards-based ESM bundler in environments supporting ES2024. Direct `<script>` globals, UMD, and CommonJS builds are not provided.
@@ -219,7 +263,9 @@ npm install
 npm run check
 ```
 
-`npm run check` is the local gate. Conventions for this repo live in [AGENTS.md](AGENTS.md).
+`npm run check` is the local gate: formatting, lint, dead-code and dependency checks, the size budget, the unit and type suites, and the browser CSP run. It is the same gate CI runs, so a green `check` locally means a green pull request.
+
+Conventions for this repo live in [AGENTS.md](AGENTS.md); the [Contract](#contract) above is normative and changes to it are breaking.
 
 ## License
 
