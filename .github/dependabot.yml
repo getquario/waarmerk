@@ -13,6 +13,12 @@ updates:
       prefix: "chore"
       include: "scope"
     groups:
+      commitlint:
+        patterns:
+          - "@commitlint/*"
+      fuzz:
+        patterns:
+          - "@jazzer/*"
       lint:
         patterns:
           - "oxfmt"
