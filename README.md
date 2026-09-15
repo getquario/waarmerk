@@ -1,25 +1,34 @@
 # waarmerk
 
-Hand a parser's error to the code that embedded it — span moved, metadata intact, and the parser still vouching for it. **~0.5KB min+gzip, zero runtime dependencies.**
+A parser that gets embedded in something larger reports faults in its own coordinates: a template engine's expression compiler counts from the start of the expression, not the file. The code around it has to move those numbers, and usually does it by rebuilding the error and losing half of what was on it.
 
-[![NPM version](https://img.shields.io/npm/v/waarmerk.svg)](https://www.npmjs.com/package/waarmerk)
-[![Build Status](https://github.com/getquario/waarmerk/actions/workflows/test.yml/badge.svg)](https://github.com/getquario/waarmerk/actions/workflows/test.yml)
-[![NPM downloads](https://img.shields.io/npm/dm/waarmerk.svg)](https://www.npmjs.com/package/waarmerk)
-[![Apache-2.0 license](https://img.shields.io/github/license/getquario/waarmerk.svg)](https://github.com/getquario/waarmerk/blob/main/LICENSE)
+waarmerk is the handover. Your parser mints an error only it can vouch for, and re-issues it in the embedder's coordinates on request — same class, every field intact, and still passing your own authenticity check. _Waarmerk_ is Dutch for a hallmark: the mark that says whose something is, and that it is genuine.
 
-<a href="https://webstronauts.com?utm_source=github&utm_medium=readme&utm_campaign=waarmerk">
-	<picture>
-		<img src="https://webstronauts.com/images/sponsored-by.svg" alt="Sponsored by The Webstronauts" width="200" height="65">
-	</picture>
-</a>
+> **This is a package for people writing parsers.** If you are using one, you want its own documentation; waarmerk is what it may be built on.
 
-Any parser embedded in something larger reports faults in its own coordinates: a template engine's expression compiler counts from the start of the expression, not the file; a query engine's pattern matcher counts from the start of the pattern, not the query. The code around it has to move those numbers, and usually does it by rebuilding the error and losing half of what was on it.
+- **Tiny.** 583 B minified and brotlied, with zero dependencies.
+- **Identity, not shape.** A look-alike error fails the check: authenticity is a `WeakMap` only your parser holds, so `error.code && error.start != null` can't be forged by something thrown from a callback you were handed.
+- **Nothing is dropped.** Relocation copies by descriptor, so a field you add in a later release travels to embedders for free.
+- **Still yours afterwards.** The relocated copy is the same error class and still passes your package's own `isDiagnostic`, so code catching it further out still recognises it.
+- **Proven in four parsers.** [xprsn](https://github.com/getquario/xprsn), [sjabloon](https://github.com/getquario/sjabloon), [treffer](https://github.com/getquario/treffer) and [padvinder](https://github.com/getquario/padvinder) all mint through it.
+- **Hardened.** 42 tests at 100% branch coverage, running under a strict CSP.
 
-waarmerk is the handover. The parser mints an error only it can vouch for, and re-issues it in the caller's coordinates on request — same class, every field, still authentic.
+```js
+import { mint, relocate, store } from "waarmerk";
 
-_Waarmerk_ is Dutch for a hallmark — the mark that says whose something is, and that it is genuine.
+const diags = store("csv-math");
 
-**This is a package for people writing parsers.** If you are using one, you want its own documentation; waarmerk is what it may be built on.
+try {
+  // The parser counts from the start of the formula it was handed: "4 * 5".
+  mint(diags, SyntaxError, 'Unexpected "*"', { code: "CSVMATH_SYNTAX", start: 2, end: 3 });
+} catch (fault) {
+  // The spreadsheet shows "=4 * 5" in C3, so every column is one further along.
+  throw relocate(diags, fault, { prefix: "C3: ", offset: 1 });
+}
+//=> SyntaxError: C3: Unexpected "*"  ·  .code "CSVMATH_SYNTAX"  ·  .start 3  ·  .end 4
+```
+
+<img src="https://getquario.com/favicon.svg" alt="Quario logo" width="16" height="16" /> <b>waarmerk</b> is built by the team behind <b><a href="https://getquario.com?utm_source=github&utm_medium=readme&utm_campaign=waarmerk">Quario</a></b>, a declarative reporting engine for JavaScript that renders JSON report definitions to <b>HTML, PDF, workbooks, and Word</b> — without <code>eval</code>.
 
 ## Contents
 
