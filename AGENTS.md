@@ -39,7 +39,6 @@ Size is a soft goal (budget in `package.json`). Name bindings for readers; `lib/
 Omakase: one obvious path over knobs. Test the guarantee a user relies on. Add complexity when concrete pressure shows up.
 
 - oxfmt owns formatting on its defaults. `npm run fmt`.
-- Comments only where the code cannot: safety rationale, non-obvious tricks.
 - Tests are `node:test` in `test/*.test.js` (`mint`, `relocate`, `safety`), run against `lib/`. A new field kind or a new relocation option belongs in the matching suite.
 - `test/browser/` serves the shipped file under a strict CSP in Chromium. It is not a duplicate of the Node suites: every guarantee here rests on engine behaviour — WeakMap identity, property descriptors, intrinsics captured at load — and those are worth confirming in a real engine rather than assuming from Node. `lib/` is served **verbatim**, and a check in the harness fetches every served module back and fails if any differs from its source on disk. There is no import map, because this package has no dependency whose bare specifier a browser would fail to resolve; its siblings declare one, and if this package ever gains a dependency it gains a map too rather than rewriting the source.
 - **No fuzz target, unlike every sibling.** Nothing here parses: the inputs are a store, an error class, a message, a field bag and relocation options, all built by the calling package rather than by anyone untrusted. A target over that saturated at 22 features and a two-entry corpus after 1.5M executions, and found nothing in the four defects this module has had. The risk that is real — a replaced prototype, a swapped `Object` method or `WeakMap` operation, an accessor where a span belongs — is adversarial and named, so it lives in `test/safety.test.js` as tests with names. Add to that suite instead. The untrusted text stops at the siblings' parsers, which is where their fuzzing earns its keep.
@@ -50,6 +49,17 @@ Omakase: one obvious path over knobs. Test the guarantee a user relies on. Add c
 - `oxlint-tsgolint` is the binary that runs the type-aware rules; without it they drop silently.
 - `test/types.check.ts` ends scopes with `void [...]` so type-only bindings stay live under `no-unused-vars`. It also models how a package narrows `Diagnostic` — by restating its store's predicate over its own diagnostic type, which is what the hand-written declarations downstream do.
 - Fallow defaults are the gate.
+
+## Code comments
+
+A comment carries a _why_ the code cannot: a constraint, a deliberate deviation, a gotcha, a workaround. The code already shows the _how_, so the default is no comment.
+
+- **Write for a reader who sees the file fresh.** The comment describes the code as it stands. What changed, and why it changed, goes in the commit message.
+- **Keep the one fact a reader needs at that line.** An invariant the code cannot state ("the timeout stays below the poll interval; the host kills longer waits") or a sync obligation with another file ("mirror the list in `lib/index.d.ts`"). A comment that only restates a decision the code already reflects is deleted, even one that points at a doc.
+- **The comment stands with every link removed.** Encode the substance; a link is a trailing breadcrumb, never the substance. Point at a maintained doc at a stable path (an ADR, `CONTEXT.md`, a README); a spec section number or a design doc is a point-in-time artifact that rots. When the why is a system-level narrative, it lives in that doc in full, and the comment keeps only the local detail.
+- **Razor every comment you keep.** "Carries a real why" and "worded minimally" are separate checks. Cut the mechanism the code shows, where the value is consumed, the consequence of the consequence, the justification of the justification. A five-line block is suspect on sight; the razored answer is sometimes zero lines.
+- **A public export gets a one-line summary.** A single clear line inside a body gets nothing.
+- **A TODO is a marker.** It needs no issue ID, and it never stands in for work that is in scope.
 
 ## Scope
 
