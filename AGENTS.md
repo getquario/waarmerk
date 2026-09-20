@@ -48,7 +48,7 @@ Omakase: one obvious path over knobs. Test the guarantee a user relies on. Add c
 - Suppress `no-unused-expressions` on the expression that trips it with `// oxlint-disable-next-line` directly above it. oxfmt moves lines, so a trailing comment slips off its target.
 - `oxlint-tsgolint` is the binary that runs the type-aware rules; without it they drop silently.
 - `test/types.check.ts` ends scopes with `void [...]` so type-only bindings stay live under `no-unused-vars`. It also models how a package narrows `Diagnostic` — by restating its store's predicate over its own diagnostic type, which is what the hand-written declarations downstream do.
-- Fallow defaults are the gate.
+- Fallow defaults are the gate. Split and table-drive until shipped functions sit under them; leave `maxCognitive` and `maxCrap` alone. It runs in two halves: `fallow:lint` is dead code and duplication and needs no coverage, while `fallow:health` scores complexity against `coverage/coverage-final.json` and runs after the suite that writes it. Given coverage, CRAP collapses towards plain cyclomatic and `maxCyclomatic` is what binds; without it, every function scores as untested and the ceiling wants cyclomatic below 5 instead. `fallow:health` fails on a missing file rather than estimating, so run the suite first.
 
 ## Code comments
 
