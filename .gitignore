@@ -1,4 +1,6 @@
 .types/
 coverage/
 node_modules/
+reports/
+.stryker-tmp/
 
