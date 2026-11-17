@@ -10,7 +10,7 @@ waarmerk is the handover. Your parser mints an error only it can vouch for, and 
 - **Identity, not shape.** A look-alike error fails the check: authenticity is a `WeakMap` only your parser holds, so `error.code && error.start != null` can't be forged by something thrown from a callback you were handed.
 - **Nothing is dropped.** Relocation copies by descriptor, so a field you add in a later release travels to embedders for free.
 - **Still yours afterwards.** The relocated copy is the same error class and still passes your package's own `isDiagnostic`, so code catching it further out still recognises it.
-- **Proven in four parsers.** [xprsn](https://github.com/getquario/xprsn), [sjabloon](https://github.com/getquario/sjabloon), [treffer](https://github.com/getquario/treffer) and [padvinder](https://github.com/getquario/padvinder) all mint through it.
+- **Proven in four parsers.** [xprsn](https://github.com/robinvdvleuten/xprsn), [sjabloon](https://github.com/robinvdvleuten/sjabloon), [treffer](https://github.com/robinvdvleuten/treffer) and [padvinder](https://github.com/robinvdvleuten/padvinder) all mint through it.
 - **Hardened.** 42 tests at 100% branch coverage, running under a strict CSP.
 
 ```js
@@ -27,8 +27,6 @@ try {
 }
 //=> SyntaxError: C3: Unexpected "*"  ·  .code "CSVMATH_SYNTAX"  ·  .start 3  ·  .end 4
 ```
-
-<img src="https://getquario.com/favicon.svg" alt="Quario logo" width="16" height="16" /> <b>waarmerk</b> is built by the team behind <b><a href="https://getquario.com?utm_source=github&utm_medium=readme&utm_campaign=waarmerk">Quario</a></b>, a declarative reporting engine for JavaScript that renders JSON report definitions to <b>HTML, PDF, workbooks, and Word</b> — without <code>eval</code>.
 
 ## Contents
 
@@ -121,10 +119,10 @@ If none of those bite — your parser is a leaf, its errors are read by humans a
 
 Four published parsers mint through waarmerk, and they are worth reading as worked integrations:
 
-- **[xprsn](https://github.com/getquario/xprsn)** — an expression language. The worked case for [`origin`](#api): it compiles once and evaluates many times, and scopes a per-evaluator `isDiagnostic` to the compile token it minted with.
-- **[sjabloon](https://github.com/getquario/sjabloon)** — a template engine. Mints with a frozen `blocks` array of enclosing-block spans, and uses [`adopt`](#adding-your-own-context) on an xprsn fault it relocated into template coordinates, so the result answers to both packages.
-- **[treffer](https://github.com/getquario/treffer)** — an RFC 9485 I-Regexp matcher. Shows the split between located syntax faults and the spanless budget diagnostics `capped` mints.
-- **[padvinder](https://github.com/getquario/padvinder)** — an RFC 9535 JSONPath engine. Adopts a treffer pattern fault into query coordinates, and re-exports treffer's code union so its own consumers can name those codes without a treffer dependency.
+- **[xprsn](https://github.com/robinvdvleuten/xprsn)** — an expression language. The worked case for [`origin`](#api): it compiles once and evaluates many times, and scopes a per-evaluator `isDiagnostic` to the compile token it minted with.
+- **[sjabloon](https://github.com/robinvdvleuten/sjabloon)** — a template engine. Mints with a frozen `blocks` array of enclosing-block spans, and uses [`adopt`](#adding-your-own-context) on an xprsn fault it relocated into template coordinates, so the result answers to both packages.
+- **[treffer](https://github.com/robinvdvleuten/treffer)** — an RFC 9485 I-Regexp matcher. Shows the split between located syntax faults and the spanless budget diagnostics `capped` mints.
+- **[padvinder](https://github.com/robinvdvleuten/padvinder)** — an RFC 9535 JSONPath engine. Adopts a treffer pattern fault into query coordinates, and re-exports treffer's code union so its own consumers can name those codes without a treffer dependency.
 
 ## API
 
@@ -266,7 +264,7 @@ Minting and relocation both cost roughly what constructing an `Error` costs; `is
 ## Contributing
 
 ```bash
-git clone https://github.com/getquario/waarmerk.git
+git clone https://github.com/robinvdvleuten/waarmerk.git
 cd waarmerk
 npm install
 git config core.hooksPath .githooks   # enable the commit-msg hook

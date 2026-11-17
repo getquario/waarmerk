@@ -14,7 +14,7 @@ Waarmerk does not parse, and takes no untrusted text of its own. It runs in the 
 
 Do not open a public GitHub issue for a security vulnerability.
 
-Use [GitHub's private vulnerability form](https://github.com/getquario/waarmerk/security/advisories/new).
+Use [GitHub's private vulnerability form](https://github.com/robinvdvleuten/waarmerk/security/advisories/new).
 
 Include the affected code, its impact, and steps that reproduce the issue. Tell us whether and how to credit you.
 
